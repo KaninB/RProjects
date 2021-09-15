@@ -1,0 +1,231 @@
+---
+title: "Class Stats"
+author: "Wulfph"
+date: "5/13/2021"
+output: html_document
+---
+
+# Data on C212:
+
+```{r}
+library(tidyverse)
+#Read in the data
+data <- na.omit(as_tibble(read.csv("gradedist.csv")))
+data$AVG.SECT.GPA <- as.double(data$AVG.SECT.GPA)
+data$AVG.STDNT.CUM.GPA <- as.double(data$AVG.STDNT.CUM.GPA)
+data 
+```
+
+## Is the Data Normal?
+
+So this is a question that basically means is the data for the things we care about fairly linear. It should look like a roughly y=x+whatever line. Surpisingly, it appears the data for our distribution of classes who have taken C212 is fairly normal. This means our math should be fairly easy.
+
+
+
+```{r}
+ggplot(data, aes(sample = AVG.SECT.GPA)) + stat_qq() + ggtitle("Q-Q Plot of Average Section GPA")
+ggplot(data, aes(sample = AVG.STDNT.CUM.GPA)) + stat_qq() + ggtitle("Q-Q Plot of Average Setudent Cumulative GPA")
+```
+
+Let’s talk about the two main values we will be inspecting. The first is the “Average Section GPA.” This value is self-descriptive and should be treated as the mean grade of students in the class in a sense. The second value is “Average Student Cumulative GPA,” which is a fancy way of saying the mean GPA of students taking the class.
+
+```{r}
+teacher_list <- split(data, data$INSTRUCTOR.NAME)
+teacher_list
+names(teacher_list) <- c("Bhutta", "Dalkilic", "German", "Haynes", "Malbasa", "Menzel", "Mohan", "Rawlins", "Sabry", "Sabry.", "Voufo")
+bhutta.GPA <- teacher_list$Bhutta$AVG.SECT.GPA
+bhutta.CUM <- teacher_list$Bhutta$AVG.STDNT.CUM.GPA
+german.GPA <- teacher_list$German$AVG.SECT.GPA
+german.CUM <-teacher_list$German$AVG.STDNT.CUM.GPA
+```
+
+This code takes our data and splits it into sections based on the instructor. A. Bhutta is our man in question, but we need another comparable instructor to know if Bhutta is really that bad. Let’s choose D. German as he will be familiar to a lot of students and has a decently sized pool of teaching C212.
+
+Below, I will be listing a summary of the data sectioned out into four areas Bhutta GPA, Bhutta CUM, German GPA, and German CUM. These are our priority interests for now. The measurements beneath them for the lower and upper bounds for a confidence interval. For those unaware, a confidence interval tells us our we are confident our sample mean lies somewhere in a range. We are doing a 95% confidence interval meaning our mean would lie somewhere in the middle 95% of data if we are somehow incorrect.
+
+## Bhutta GPA
+
+This section tells us some basic information about Bhutta’s classes. Pay attention to the class GPA mean, max, and min. These are the mean of all class GPAs, the highest GPA, and the lowest GPA as mentioned.
+
+```{r}
+summary(bhutta.GPA)
+mean(bhutta.GPA) - qnorm(.975)*sd(bhutta.GPA) / sqrt(length(bhutta.GPA))
+mean(bhutta.GPA) + qnorm(.975)*sd(bhutta.GPA) / sqrt(length(bhutta.GPA))
+```
+
+## Bhutta CUM
+
+Let’s do the same for the student GPA distribution. Again, make mental notes of the mean, max, and min.
+
+
+```{r}
+summary(bhutta.CUM)
+mean(bhutta.CUM) - qnorm(.975)*sd(bhutta.CUM) / sqrt(length(bhutta.CUM))
+mean(bhutta.CUM) + qnorm(.975)*sd(bhutta.CUM) / sqrt(length(bhutta.CUM))
+```
+
+## German GPA
+
+We'll do the same basic analysis for German as well so we have data for our baseline.
+
+```{r}
+summary(german.GPA)
+mean(german.GPA) - qnorm(.975)*sd(german.GPA) / sqrt(length(german.GPA))
+mean(german.GPA) + qnorm(.975)*sd(german.GPA) / sqrt(length(german.GPA))
+```
+
+## German CUM
+
+```{r}
+summary(german.CUM)
+mean(german.CUM) - qnorm(.975)*sd(german.CUM) / sqrt(length(german.CUM))
+mean(german.CUM) + qnorm(.975)*sd(german.CUM) / sqrt(length(german.CUM))
+```
+
+## Results
+
+Now we have a basis of what all our numbers look like. Just to condense this into a more legible format.
+            Min,      Mean,     Max
+Bhutta GPA: 2.455     3.018      3.707
+
+Bhutta CUM: 2.698     3.172     3.777
+
+German GPA: 2.467     3.426     3.965
+
+German CUM: 2.859     3.180     3.732
+
+So, the difference in means of class GPA is 3.426 - 3.018 or 0.408 points. On a 4.0 scale, that’s a tenth of the scale. Conversely, the difference between average student gpa is 3.180 - 3.172 or 0.008. This difference is near negligible.
+
+This tells us that despite the student population being very close in both teacher’s sections on average, Bhutta has a lower GPA on average. This information alone isn’t enough to confirm this though.
+
+```{r}
+length(bhutta.GPA)
+length(german.GPA)
+abs(length(bhutta.GPA) - length(german.GPA))
+```
+In our data, German has taught this class 26 more times or a little over 3 times the number of times Bhutta has taught this course.
+
+## Comparison Tests 
+Here I use Welch's two-tailed t-tests on the two data groups. The goal of these is to check if our data follows a normal hypothesis. For these tests, the normal hypothesis is the difference in means being either less than or equal to 0. The alternative hypothesis is then the difference n means the difference in means is greater than 0. A small p-value (less than 0.01) is considered proof of the alternative hypothesis while a large p-value (greater than 0.1) is proof of the normal hypothesis. The term proof is not conclusive, and the numbers for high and low are considered typical not necessarily indicative of large and small p-values.
+
+```{r}
+t.test(german.GPA, bhutta.GPA, alt="greater")
+t.test(german.CUM, bhutta.CUM, alt="greater")
+```
+
+From these two tests, we can see that it is unlikely for German’s class to have a higher cumulative student GPA on average, but it is entirely likely that German’s class has a higher class GPA on average.
+
+## Letter Breakdown
+
+Thanks to my college’s wonderful data collection, we have access to the number of students who scored in each grade including the various forms of drops and incompletes. It even goes so far to break down +, neutral, and - grades. Here, I run the same sorts of tests to see if you are more likely to get certain grades in an individual class. For purposes of calculation, any grade that is a non-typical letter grade is treated as failing.
+
+### Distributions:
+```{r}
+bhutta.A <- teacher_list$Bhutta$PA
+bhutta.B <- teacher_list$Bhutta$PB
+bhutta.C <- teacher_list$Bhutta$PC
+bhutta.D <- teacher_list$Bhutta$PD
+bhutta.F <- teacher_list$Bhutta$OTHER.GRADES
+
+german.A <- teacher_list$German$PA
+german.B <- teacher_list$German$PB
+german.C <- teacher_list$German$PC
+german.D <- teacher_list$German$PD
+german.F <- teacher_list$German$OTHER.GRADES
+
+```
+
+## Bhutta Grades:
+
+### A
+
+```{r}
+summary(bhutta.A)
+mean(bhutta.A) - qnorm(.975)*sd(bhutta.A) / sqrt(length(bhutta.A))
+mean(bhutta.A) + qnorm(.975)*sd(bhutta.A) / sqrt(length(bhutta.A))
+```
+
+### B
+
+```{r}
+summary(bhutta.B)
+mean(bhutta.B) - qnorm(.975)*sd(bhutta.B) / sqrt(length(bhutta.B))
+mean(bhutta.B) + qnorm(.975)*sd(bhutta.B) / sqrt(length(bhutta.B))
+```
+
+### C
+
+```{r}
+summary(bhutta.C)
+mean(bhutta.C) - qnorm(.975)*sd(bhutta.C) / sqrt(length(bhutta.C))
+mean(bhutta.C) + qnorm(.975)*sd(bhutta.C) / sqrt(length(bhutta.C))
+```
+
+### D
+
+```{r}
+summary(bhutta.D)
+mean(bhutta.D) - qnorm(.975)*sd(bhutta.D) / sqrt(length(bhutta.D))
+mean(bhutta.D) + qnorm(.975)*sd(bhutta.D) / sqrt(length(bhutta.D))
+```
+
+### F
+
+```{r}
+summary(bhutta.A)
+mean(bhutta.F) - qnorm(.975)*sd(bhutta.F) / sqrt(length(bhutta.F))
+mean(bhutta.F) + qnorm(.975)*sd(bhutta.F) / sqrt(length(bhutta.F))
+```
+
+## German grades:
+
+### A
+
+```{r}
+summary(german.A)
+mean(german.A) - qnorm(.975)*sd(german.A) / sqrt(length(german.A))
+mean(german.A) + qnorm(.975)*sd(german.A) / sqrt(length(german.A))
+```
+
+### B
+
+```{r}
+summary(german.B)
+mean(german.B) - qnorm(.975)*sd(german.B) / sqrt(length(german.B))
+mean(german.B) + qnorm(.975)*sd(german.B) / sqrt(length(german.B))
+```
+
+### C
+
+```{r}
+summary(german.C)
+mean(german.C) - qnorm(.975)*sd(german.C) / sqrt(length(german.C))
+mean(german.C) + qnorm(.975)*sd(german.C) / sqrt(length(german.C))
+```
+
+### D
+
+```{r}
+summary(german.D)
+mean(german.D) - qnorm(.975)*sd(german.D) / sqrt(length(german.D))
+mean(german.D) + qnorm(.975)*sd(german.D) / sqrt(length(german.D))
+```
+
+### F
+
+```{r}
+summary(german.A)
+mean(german.F) - qnorm(.975)*sd(german.F) / sqrt(length(german.F))
+mean(german.F) + qnorm(.975)*sd(german.F) / sqrt(length(german.F))
+```
+
+## Comparison Tests
+
+```{r}
+t.test(german.A, bhutta.A)
+t.test(german.B, bhutta.B)
+t.test(german.C, bhutta.C)
+t.test(german.D, bhutta.D)
+t.test(german.F, bhutta.F)
+
+```
